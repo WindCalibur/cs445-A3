@@ -83,17 +83,18 @@ public class A3q3 {
 		currentSequence = "";
 		Path path = Paths.get(file_name);
 		try (Scanner scanner = new Scanner(path,ENCODING.name())) {
-			
 			String line = "";
 			while (scanner.hasNextLine()) {
 				line = scanner.nextLine();
-				currentSequence = currentSequence + line;
+				System.out.println(line);
+				if (line.charAt(0) != '>')
+					currentSequence = currentSequence + line;
 			}
 		}
 	}
 	
 	public double LNEXP(double lnp, double lnq) {
-		if ((lnp == -NEGINF) && (lnq == -NEGINF)) {
+		if ((lnp == NEGINF) && (lnq == NEGINF)) {
 			return NEGINF;
 		} else if (lnp < lnq) {
 			return lnq + Math.log(1.0 + Math.exp(lnp-lnq));
@@ -127,6 +128,7 @@ public class A3q3 {
 	}
 	
 	public void Viterbi() {
+		System.out.println("\nViterbi decoding");
 		double[][] v = new double[4][currentSequence.length()+1];
 		int[][] ptr = new int[3][currentSequence.length()+1];
 		
@@ -205,7 +207,6 @@ public class A3q3 {
 		}
 		decoded.add(0, currentDecode);
 		
-		System.out.println("Viterbi decoding");
 		printDecode(decoded);
 		
 	}
@@ -218,6 +219,115 @@ public class A3q3 {
 	}
 	
 	public void Posterior() {
+		System.out.println("\nPosterior Decoding");
+		double[][] f = new double[4][currentSequence.length()+1];
+		double[][] b = new double[4][currentSequence.length()+1];
+		
+		// Forward
+		// Initialization
+		f[0][0] = 0;
+		f[1][0] = NEGINF;
+		f[2][0] = NEGINF;
+		f[3][0] = NEGINF;
+		
+		// Recursion
+		for (int i = 1; i < currentSequence.length()+1; i++) {
+			for (int j = 1; j < 4; j++) {
+				char currentState = IndexToChar(j).charAt(0);
+				double prev_s = f[0][i-1] + Math.log(transitionTable[0][currentState]); 
+				double prev_a = f[1][i-1] + Math.log(transitionTable['a'][currentState]); 
+				double prev_b = f[2][i-1] + Math.log(transitionTable['b'][currentState]); 
+				double prev_c = f[3][i-1] + Math.log(transitionTable['c'][currentState]); 
+				double sum = LNEXP(LNEXP(LNEXP(prev_s, prev_a), prev_b), prev_c);
+				f[j][i] = sum + Math.log(emissionTable[currentSequence.charAt(i-1)][currentState]);
+			}
+			f[0][i] = NEGINF;
+		}
+		
+		// Termination
+		
+		double prob = LNEXP(LNEXP(f[1][currentSequence.length()], f[2][currentSequence.length()]), f[3][currentSequence.length()]);
+		System.out.println(prob);
+		
+		// Backwards
+		// Initialization
+		
+		int L = currentSequence.length();
+		b[0][L] = 0;
+		b[1][L] = 0;
+		b[2][L] = 0;
+		b[3][L] = 0;
+		
+		// Recursion
+		
+		for (int i = L-1; i > 0; i--) {
+			for (int j = 1; j < 4; j++) {
+				char currentState = IndexToChar(j).charAt(0);
+				double prev_s = b[0][i+1] + Math.log(transitionTable[currentState][0]) + Math.log(emissionTable[currentSequence.charAt(i)][0]);
+				double prev_a = b[1][i+1] + Math.log(transitionTable[currentState]['a']) + Math.log(emissionTable[currentSequence.charAt(i)]['a']);
+				double prev_b = b[2][i+1] + Math.log(transitionTable[currentState]['b']) + Math.log(emissionTable[currentSequence.charAt(i)]['b']); 
+				double prev_c = b[3][i+1] + Math.log(transitionTable[currentState]['c']) + Math.log(emissionTable[currentSequence.charAt(i)]['c']); 
+				double sum = LNEXP(LNEXP(LNEXP(prev_s, prev_a), prev_b), prev_c);
+				b[j][i] = sum;
+			}
+			b[0][i] = NEGINF;
+		}
+		
+		// Termination
+		// Not necessary
+		
+		// Posterior Decoding
+		
+		double pos_a = (f[1][1] + b[1][1]) - prob;
+		double pos_b = (f[2][1] + b[2][1]) - prob;
+		double pos_c = (f[3][1] + b[3][1]) - prob;
+		double max = Math.max(Math.max(pos_a, pos_b), pos_c);
+		
+		int currentState = 0;
+		if (pos_a == max) {
+			currentState = 1;
+		} else if (pos_b == max) {
+			currentState = 2;
+		} else if (pos_c == max) {
+			currentState = 3;
+		}
+	
+		ArrayList<DecodeUnit> decoded = new ArrayList<DecodeUnit>();
+		DecodeUnit currentDecode = new DecodeUnit();
+		
+		currentDecode.state = IndexToString(currentState);
+		currentDecode.amount++;
+		for (int i = 2; i < L+1; i++) {
+			
+			pos_a = (f[1][i] + b[1][i]) - prob;
+			pos_b = (f[2][i] + b[2][i]) - prob;
+			pos_c = (f[3][i] + b[3][i]) - prob;
+			
+			max = Math.max(Math.max(pos_a, pos_b), pos_c);
+			
+			int tempState = 0;
+			if (pos_a == max) {
+				tempState = 1;
+			} else if (pos_b == max) {
+				tempState = 2;
+			} else if (pos_c == max) {
+				tempState = 3;
+			}
+			
+			if (tempState == currentState) {
+				currentDecode.amount++;
+			} else {
+				decoded.add(currentDecode);
+				currentDecode = new DecodeUnit();
+				currentState = tempState;
+				currentDecode.state = IndexToString(currentState);
+				currentDecode.amount++;
+			}
+		}
+		decoded.add(currentDecode);
+		
+		printDecode(decoded);
+		
 		
 	}
 	
@@ -225,7 +335,10 @@ public class A3q3 {
 	
 	public static void main(String[] args) throws IOException {
 		A3q3 a3q3 = new A3q3();
-		a3q3.readFile("P39758");
+		a3q3.readFile("P39758.fasta");
+		a3q3.Viterbi();
+		a3q3.Posterior();
+		a3q3.readFile("Q0VCA5.fasta");
 		a3q3.Viterbi();
 		a3q3.Posterior();
 	}
