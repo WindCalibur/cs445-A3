@@ -1,0 +1,31 @@
+A HMM that describes this the states for this problem would be:
+
+S(a, b) = state a transition to b
+
+S(1, 2) = 1.0;
+S(2, 3) = 1.0;
+S(3, 1) = 1.0;
+Everything else = 0;
+
+Basically, state 1 can only go into state 2, which can only go to state 3. State 3 then can go into state 1
+
+Where Emission(a, b) = Prob of b when in state A,
+
+E(1, G) = P(G, 1)
+E(1, C) = P(C, 1)
+E(1, T) = P(T, 1)
+E(1, A) = P(A, 1)
+E(2, G) = P(G, 2)
+E(2, C) = P(C, 2)
+E(2, T) = P(T, 2)
+E(2, A) = P(A, 2)
+E(3, G) = P(G, 3)
+E(3, C) = P(C, 3)
+E(3, T) = P(T, 3)
+E(3, A) = P(A, 3)
+
+Now, we can use viterbi algorithm on this and figure out the path. We cannot use posterior decoding since not all
+states can transition into another. This means getting most likely states S and S+1 may result in a scenario where
+S cannot transition into S+.
+
+
